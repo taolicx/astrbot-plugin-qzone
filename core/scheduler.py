@@ -15,8 +15,8 @@ from .service import PostService
 
 class AutoRandomCronTask:
     """
-    Schedule one task per cron cycle around the cron anchor time.
-    Subclasses only need to implement async do_task().
+    围绕 cron 基准时间做一次随机偏移调度。
+    子类只需要实现 async do_task()。
     """
 
     def __init__(
@@ -39,7 +39,7 @@ class AutoRandomCronTask:
         self._register_task()
 
         logger.info(
-            f"[{self.job_name}] 已启动，任务周期：{self.cron_expr}，偏移范围：±{self.offset_seconds} 分钟"
+            f"[{self.job_name}] 已启动，任务周期：{self.cron_expr}，偏移范围：±{self.offset_seconds} 秒"
         )
 
     def _register_task(self):
@@ -140,12 +140,32 @@ class AutoComment(AutoRandomCronTask):
         self.sender = sender
 
     async def do_task(self):
-        posts = await self.service.query_feeds(
-            pos=0,
-            num=20,
-            no_self=True,
-            no_commented=True,
-        )
+        try:
+            posts = await self.service.query_feeds(
+                pos=0,
+                num=20,
+                no_self=True,
+                no_commented=True,
+            )
+        except RuntimeError as e:
+            # 自动评论是后台巡检任务，动态流偶发空响应、权限抖动或短暂登录失效时，
+            # 直接跳过本轮即可，下一轮调度会继续尝试。
+            message = str(e)
+            if any(
+                keyword in message
+                for keyword in (
+                    "动态接口返回空响应",
+                    "无权限访问动态流",
+                    "登录状态失效",
+                    "动态接口响应格式异常",
+                )
+            ):
+                logger.warning(
+                    f"[{self.job_name}] 动态流暂时不可用，跳过本轮任务: {message}"
+                )
+                return
+            raise
+
         for post in posts:
             try:
                 await self.service.comment_posts(post)
@@ -178,5 +198,6 @@ class AutoPublish(AutoRandomCronTask):
         except Exception as e:
             logger.error(f"自动生成内容失败：{e}")
             return
+
         post = await self.service.publish_post(text=text)
         await self.sender.send_admin_post(post, message="定时发说说")
