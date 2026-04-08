@@ -55,6 +55,11 @@ class QzonePlugin(Star):
         if not self.auto_publish and self.cfg.trigger.publish_cron:
             self.auto_publish = AutoPublish(self.cfg, self.service, self.sender)
 
+    def _bind_client_from_event(self, event: AiocqhttpMessageEvent) -> None:
+        if not self.cfg.client:
+            self.cfg.client = event.bot
+            logger.debug("QQ空间所需的 CQHttp 客户端已初始化")
+
     async def terminate(self):
         """插件卸载时"""
         if self.qzone:
