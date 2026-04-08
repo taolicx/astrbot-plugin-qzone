@@ -1,4 +1,3 @@
-
 from typing import Any
 
 import aiohttp
@@ -60,21 +59,26 @@ class QzoneHttpClient:
             parsed[QZONE_INTERNAL_META_KEY] = meta
         meta[QZONE_INTERNAL_HTTP_STATUS_KEY] = resp.status
 
-        # 仅在明确登录失效时触发重登
+        # 仅在明确登录失效时触发重登，并优先尝试刷新机器人侧最新 Cookie。
         if resp.status == HTTP_STATUS_UNAUTHORIZED or parsed.get(
             "code"
         ) == QZONE_CODE_LOGIN_EXPIRED:
             if retry >= 2:
                 raise RuntimeError("登录失效，重试失败")
 
-            logger.warning("登录失效，重新登录中")
-            await self.session.login()
+            logger.warning("登录失效，正在刷新 Cookie 并重新登录")
+            try:
+                await self.session.refresh_login()
+            except Exception:
+                await self.session.login()
+
             return await self.request(
                 method,
                 url,
                 params=params,
                 data=data,
                 headers=headers,
+                timeout=timeout,
                 retry=retry + 1,
             )
 
