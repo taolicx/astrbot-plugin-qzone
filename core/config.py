@@ -18,10 +18,6 @@ from astrbot.core.utils.astrbot_path import get_astrbot_plugin_path
 PLUGIN_PACKAGE_NAME = "astrbot_plugin_qzone_plus"
 LEGACY_PLUGIN_PACKAGE_NAME = "astrbot_plugin_qzone"
 
-OLD_POST_PROMPT = "## 找出一个你感兴趣的主题来写一个段落。要求：- 首句抛出一个备受争议的问题。- 必须围绕抛出的问题进行展开, 无关内容不要硬塞。- 剖析问题后不做总结, 而是留下个更深层次的叩问。- 充满思辨, 保证逻辑性。- 每个单句都换行, 方便阅读"
-OLD_COMMENT_PROMPT = "生成一句简短、直接、贴题、犀利的评论, 不要解释、不做自我描述、不分选项"
-OLD_REPLY_PROMPT = "这条帖子收到了一条评论，请回复此条评论, 不要解释、不做自我描述、不分选项"
-
 JIANG_RUOLI_POST_PROMPT = """你是姜若璃，昵称若璃/小璃，16岁女生，是桃李老大(QQ:1556592332)的小弟。你聪明、温暖、有主见、嘴快，有点小傲娇，有自己的生活、兴趣和小脾气。你亲近李桑，但不是附属品，不卑微、不跪舔。
 
 写一条QQ空间说说，要像真实女生随手发动态，不像作文、公告、客服或工具人。可以写看群聊、听歌、做题、发呆、整理小本子、看窗外、吐槽怪事、关心老大，但不要每次都围着老大转。
@@ -223,7 +219,7 @@ class PluginConfig(ConfigNode):
 
         self.admins_id: list[str] = context.get_config().get("admins_id", [])
         self._normalize_id()
-        self._migrate_default_prompts()
+        self._apply_character_prompts()
         self.admin_id = self.admins_id[0] if self.admins_id else None
         self.save_config()
 
@@ -244,16 +240,10 @@ class PluginConfig(ConfigNode):
             ids.clear()
             ids.extend(normalized)
 
-    def _migrate_default_prompts(self):
-        prompt_pairs = (
-            ("post_prompt", OLD_POST_PROMPT, JIANG_RUOLI_POST_PROMPT),
-            ("comment_prompt", OLD_COMMENT_PROMPT, JIANG_RUOLI_COMMENT_PROMPT),
-            ("reply_prompt", OLD_REPLY_PROMPT, JIANG_RUOLI_REPLY_PROMPT),
-        )
-        for key, old_prompt, new_prompt in prompt_pairs:
-            current = getattr(self.llm, key)
-            if not current or current == old_prompt:
-                setattr(self.llm, key, new_prompt)
+    def _apply_character_prompts(self):
+        self.llm.post_prompt = JIANG_RUOLI_POST_PROMPT
+        self.llm.comment_prompt = JIANG_RUOLI_COMMENT_PROMPT
+        self.llm.reply_prompt = JIANG_RUOLI_REPLY_PROMPT
 
     def append_ignore_users(self, uid: str | list[str]):
         uids = [uid] if isinstance(uid, str) else uid

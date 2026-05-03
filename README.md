@@ -36,7 +36,7 @@ git clone https://github.com/taolicx/astrbot-plugin-qzone
 
 请前往插件配置面板进行配置。`pillowmd_style_dir` 留空时会自动使用插件内置默认样式。
 
-增强版插件 ID 为 `astrbot_plugin_qzone_plus`，会和原版 `astrbot_plugin_qzone` 分开安装、分开配置。
+增强版插件 ID 为 `astrbot_plugin_qzone_plus`，会和原版 `astrbot_plugin_qzone` 分开安装、分开配置。增强版会在启动时强制写入姜若璃人设提示词，避免旧配置继续生效。
 
 ### 定时调度说明
 
