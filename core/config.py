@@ -15,6 +15,8 @@ from astrbot.core.star.context import Context
 from astrbot.core.star.star_tools import StarTools
 from astrbot.core.utils.astrbot_path import get_astrbot_plugin_path
 
+PLUGIN_PACKAGE_NAME = "astrbot_plugin_qzone"
+
 
 class ConfigNode:
     """
@@ -158,21 +160,28 @@ class PluginConfig(ConfigNode):
     def __init__(self, cfg: AstrBotConfig, context: Context):
         super().__init__(cfg)
         self.context = context
-        self.data_dir = StarTools.get_data_dir("astrbot_plugin_qzone")
+        self.data_dir = StarTools.get_data_dir(PLUGIN_PACKAGE_NAME)
 
         self.cache_dir = self.data_dir / "cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         self.db_path = self.data_dir / f"posts_{self._DB_VERSION}.db"
 
-        self.default_style_dir = (
-            Path(get_astrbot_plugin_path()) / "astrbot_plugin_qzone" / "default_style"
+        plugin_root = Path(__file__).resolve().parent.parent
+        legacy_style_dir = (
+            Path(get_astrbot_plugin_path()) / PLUGIN_PACKAGE_NAME / "default_style"
         )
-        self.style_dir = (
-            Path(self.pillowmd_style_dir).resolve()
-            if self.pillowmd_style_dir
-            else self.default_style_dir
+        self.default_style_dir = plugin_root / "default_style"
+
+        configured_style_dir = (
+            Path(self.pillowmd_style_dir).resolve() if self.pillowmd_style_dir else None
         )
+        if configured_style_dir and configured_style_dir.exists():
+            self.style_dir = configured_style_dir
+        elif self.default_style_dir.exists():
+            self.style_dir = self.default_style_dir
+        else:
+            self.style_dir = legacy_style_dir
 
         tz = context.get_config().get("timezone")
         self.timezone = (

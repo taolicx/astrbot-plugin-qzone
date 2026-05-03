@@ -24,6 +24,19 @@ class CampusWall:
         self.db = db
         self.sender = sender
 
+    @staticmethod
+    def _split_command(event: AstrMessageEvent) -> tuple[int | None, str]:
+        parts = event.message_str.split(maxsplit=2)
+        if len(parts) < 2:
+            return -1, ""
+
+        post_id_raw = parts[1]
+        if not post_id_raw.lstrip("-").isdigit():
+            return None, ""
+
+        reason = parts[2].strip() if len(parts) >= 3 else ""
+        return int(post_id_raw), reason
+
     async def contribute(self, event: AiocqhttpMessageEvent, anon: bool = False):
         """投稿 <文字+图片>"""
         sender_name = event.get_sender_name()
@@ -54,9 +67,10 @@ class CampusWall:
 
     async def delete(self, event: AiocqhttpMessageEvent):
         """撤稿 <稿件ID> <理由>"""
-        args = event.message_str.split(" ")
-        post_id = args[1] if len(args) >= 2 else -1
-        reason = event.message_str.removeprefix(f"撤稿 {post_id}").strip()
+        post_id, reason = self._split_command(event)
+        if post_id is None:
+            yield event.plain_result("稿件ID必须是数字")
+            return
         post = await self.db.get(post_id)
         if not post or not post.id:
             yield event.plain_result(f"稿件#{post_id}不存在")
@@ -76,10 +90,12 @@ class CampusWall:
 
     async def view(self, event: AstrMessageEvent):
         "查看稿件 <ID>, 默认最新稿件"
-        args = event.message_str.split(" ")[1:] or ["-1"]
-        for post_id in args:
-            if not post_id.isdigit():
+        args = event.message_str.split()[1:] or ["-1"]
+        for post_id_raw in args:
+            if not post_id_raw.lstrip("-").isdigit():
+                yield event.plain_result("稿件ID必须是数字")
                 continue
+            post_id = int(post_id_raw)
             post = await self.db.get(post_id)
             if not post:
                 yield event.plain_result(f"稿件#{post_id}不存在")
@@ -88,8 +104,10 @@ class CampusWall:
 
     async def approve(self, event: AiocqhttpMessageEvent):
         """管理员命令：通过稿件 <稿件ID>, 默认最新稿件"""
-        args = event.message_str.split(" ")
-        post_id = args[1] if len(args) >= 2 else -1
+        post_id, _ = self._split_command(event)
+        if post_id is None:
+            yield event.plain_result("稿件ID必须是数字")
+            return
         post = await self.db.get(post_id)
         if not post:
             yield event.plain_result(f"稿件#{post_id}不存在")
@@ -125,9 +143,10 @@ class CampusWall:
 
     async def reject(self, event: AiocqhttpMessageEvent):
         """管理员命令：拒绝稿件 <稿件ID> <原因>"""
-        args = event.message_str.split(" ")
-        post_id = args[1] if len(args) >= 2 else -1
-        reason = event.message_str.removeprefix(f"拒绝稿件 {post_id}").strip()
+        post_id, reason = self._split_command(event)
+        if post_id is None:
+            yield event.plain_result("稿件ID必须是数字")
+            return
         post = await self.db.get(post_id)
         if not post:
             yield event.plain_result(f"稿件#{post_id}不存在")
@@ -140,8 +159,6 @@ class CampusWall:
         if post.status == "approved":
             yield event.plain_result(f"稿件#{post.id}已发布，无法拒绝")
             return
-
-        reason = event.message_str.removeprefix(f"拒绝稿件 {post.id}").strip()
 
         # 更新字段，存入数据库
         post.status = "rejected"

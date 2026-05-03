@@ -55,21 +55,25 @@ class PostService:
         no_commented: bool = False,
     ) -> list[Post]:
         if target_id:
-            resp = await self.qzone.get_feeds(target_id, pos=pos, num=num)
+            request_pos = 0 if pos < 0 else pos
+            request_num = max(20, abs(pos), num) if pos < 0 else num
+            resp = await self.qzone.get_feeds(
+                target_id, pos=request_pos, num=request_num
+            )
             if not resp.ok:
                 raise RuntimeError(self._map_feed_error(resp, target_id=target_id))
             msglist = resp.data.get("msglist") or []
             if not msglist:
                 raise RuntimeError(f"QQ {target_id} 暂无可见说说")
-            posts: list[Post] = QzoneParser.parse_feeds(msglist)
+            posts = self._slice_posts(QzoneParser.parse_feeds(msglist), pos, num)
 
         else:
             resp = await self.qzone.get_recent_feeds()
             if not resp.ok:
                 raise RuntimeError(self._map_feed_error(resp))
-            posts: list[Post] = QzoneParser.parse_recent_feeds(resp.data)[
-                pos : pos + num
-            ]
+            posts = self._slice_posts(
+                QzoneParser.parse_recent_feeds(resp.data), pos, num
+            )
             if not posts:
                 raise RuntimeError("动态流暂无可见说说")
 
@@ -142,6 +146,24 @@ class PostService:
         if message:
             return f"查询说说失败：{message}"
         return f"查询说说失败：code={code}"
+
+    @staticmethod
+    def _map_action_error(action: str, resp) -> str:
+        message = str(resp.message or "").strip()
+        if message:
+            return f"{action}失败：{message}"
+        if resp.data:
+            return f"{action}失败：{resp.data}"
+        return f"{action}失败：code={resp.code}"
+
+    @staticmethod
+    def _slice_posts(posts: list[Post], pos: int, num: int) -> list[Post]:
+        if num <= 0:
+            return []
+        if pos < 0:
+            end = pos + num
+            return posts[pos:] if end == 0 else posts[pos:end]
+        return posts[pos : pos + num]
 
     @staticmethod
     def _extract_http_status(raw: dict[str, Any]) -> int | None:
@@ -221,9 +243,10 @@ class PostService:
         """点赞帖子"""
         if not post.tid:
             raise ValueError("帖子 tid 为空")
-        await self.qzone.like(post)
+        resp = await self.qzone.like(post)
+        if not resp.ok:
+            raise RuntimeError(self._map_action_error("点赞说说", resp))
         logger.info(f"已点赞 → {post.name}")
-
 
     async def comment_posts(self, post: Post):
         """评论帖子"""
@@ -234,7 +257,9 @@ class PostService:
         if not content:
             raise ValueError("生成评论内容为空")
 
-        await self.qzone.comment(post, content)
+        resp = await self.qzone.comment(post, content)
+        if not resp.ok:
+            raise RuntimeError(self._map_action_error("评论说说", resp))
 
         uin = await self.session.get_uin()
         name = await self.session.get_nickname()
@@ -280,7 +305,7 @@ class PostService:
         # 发回复
         resp = await self.qzone.reply(post, comment, content)
         if not resp.ok:
-            raise RuntimeError(resp.message)
+            raise RuntimeError(self._map_action_error("回复评论", resp))
 
         # 本地回填
         name = await self.session.get_nickname()
@@ -322,7 +347,9 @@ class PostService:
         # 发布
         resp = await self.qzone.publish(post)
         if not resp.ok:
-            raise RuntimeError(f"发布说说失败：{resp.data}")
+            raise RuntimeError(self._map_action_error("发布说说", resp))
+        if not resp.data.get("tid"):
+            raise RuntimeError("发布说说失败：接口未返回 tid")
 
         # 回填发布结果
         post.tid = resp.data.get("tid")
@@ -337,6 +364,8 @@ class PostService:
         """删除帖子"""
         if not post.tid:
             raise ValueError("帖子 tid 为空")
-        await self.qzone.delete(post.tid)
+        resp = await self.qzone.delete(post.tid)
+        if not resp.ok:
+            raise RuntimeError(self._map_action_error("删除说说", resp))
         if post.id:
             await self.db.delete(post.id)

@@ -200,14 +200,23 @@ class QzoneParser:
                 # 提取图片信息
                 image_urls = []
                 for img_data in msg.get("pic", []):
-                    for key in ("url2", "url3", "url1", "smallurl"):
+                    for key in (
+                        "url2",
+                        "url3",
+                        "url1",
+                        "origin_url",
+                        "raw",
+                        "photourl",
+                        "smallurl",
+                    ):
                         if raw := img_data.get(key):
                             image_urls.append(raw)
                             break
                 # 读取视频封面（按图片处理）
                 for video in msg.get("video") or []:
                     video_image_url = video.get("url1") or video.get("pic_url")
-                    image_urls.append(video_image_url)
+                    if video_image_url:
+                        image_urls.append(video_image_url)
                 # 提取视频播放地址
                 video_urls = []
                 for video in msg.get("video") or []:
@@ -215,7 +224,8 @@ class QzoneParser:
                     if url:
                         video_urls.append(url)
                 # 提取转发内容
-                rt_con = msg.get("rt_con", {}).get("content", "")
+                rt_data = msg.get("rt_con") or {}
+                rt_con = rt_data.get("content", "") if isinstance(rt_data, dict) else ""
                 # 提取评论
                 comments = Comment.build_list(msg.get("commentlist") or [])
                 # 构造Post对象
@@ -245,8 +255,11 @@ class QzoneParser:
     @staticmethod
     def parse_recent_feeds(data: dict) -> list[Post]:
         """解析最近说说列表"""
-        feeds: list = data.get("data", {}).get("data", {})
         if not data:
+            return []
+        feeds = data.get("data", {}).get("data", [])
+        if not isinstance(feeds, list):
+            logger.error(f"最近动态数据格式异常: {type(feeds).__name__}")
             return []
         try:
             posts = []
@@ -263,7 +276,7 @@ class QzoneParser:
                     logger.error(f"无效的说说数据: target_qq={uin}, tid={tid}")
                     continue
                 create_time = feed.get("abstime", "")
-                nickname = feed.get("nickname", "")
+                author_name = feed.get("nickname", "")
                 html_content = feed.get("html", "")
                 if not html_content:
                     logger.error(f"说说内容为空: UIN={uin}, TID={tid}")
@@ -311,7 +324,7 @@ class QzoneParser:
                         # 提取基本信息
                         data_uin = str(item.get("data-uin", ""))
                         comment_tid = str(item.get("data-tid", ""))
-                        nickname = str(item.get("data-nick", ""))
+                        comment_nickname = str(item.get("data-nick", ""))
 
                         # 查找评论内容
                         content_div = item.select_one("div.comments-content")
@@ -347,7 +360,7 @@ class QzoneParser:
                         comments.append(
                             Comment(
                                 uin=int(data_uin) if data_uin.isdigit() else 0,
-                                nickname=nickname,
+                                nickname=comment_nickname,
                                 content=content,
                                 create_time=0,
                                 create_time_str=comment_time,
@@ -361,7 +374,7 @@ class QzoneParser:
                 post = Post(
                     tid=str(tid),
                     uin=int(uin),
-                    name=str(nickname),
+                    name=str(author_name),
                     text=text,
                     images=list(set(image_urls)),
                     videos=videos,

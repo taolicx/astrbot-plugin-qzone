@@ -23,12 +23,18 @@ class QzoneHttpClient:
     def __init__(self, session: QzoneSession, config: PluginConfig):
         self.cfg = config
         self.session = session
-        self._session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=self.cfg.timeout)
-        )
+        self._session: aiohttp.ClientSession | None = None
+
+    def _get_http_session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=self.cfg.timeout)
+            )
+        return self._session
 
     async def close(self):
-        await self._session.close()
+        if self._session and not self._session.closed:
+            await self._session.close()
 
     async def request(
         self,
@@ -42,12 +48,20 @@ class QzoneHttpClient:
         retry: int = 0,
     ) -> dict[str, Any]:
         ctx = await self.session.get_ctx()
-        async with self._session.request(
+        request_headers = ctx.headers()
+        if headers:
+            for key, value in headers.items():
+                for old_key in list(request_headers):
+                    if old_key.lower() == key.lower():
+                        request_headers.pop(old_key)
+                request_headers[key] = value
+        http_session = self._get_http_session()
+        async with http_session.request(
             method,
             url,
             params=params,
             data=data,
-            headers=headers or ctx.headers(),
+            headers=request_headers,
             cookies=ctx.cookies(),
             timeout=timeout,
         ) as resp:
@@ -75,6 +89,7 @@ class QzoneHttpClient:
                 params=params,
                 data=data,
                 headers=headers,
+                timeout=timeout,
                 retry=retry + 1,
             )
 

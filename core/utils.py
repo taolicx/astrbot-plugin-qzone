@@ -49,9 +49,10 @@ def parse_range(event: AstrMessageEvent) -> tuple[int, int]:
     解析范围参数，返回 (offset, limit)
 
     用户输入：
-    - n        → 第 n 条
+    - n        → 第 n 条（从 0 开始，0 为最新）
+    - -1       → 最后一条（依赖当前已拉取列表）
     - s~e      → 第 s 到 e 条
-    - 其它 / 无 → 第 1 条
+    - 其它 / 无 → 第 0 条
     """
     parts = event.message_str.strip().split()
     if not parts:
@@ -65,18 +66,16 @@ def parse_range(event: AstrMessageEvent) -> tuple[int, int]:
             s, e = end.split("~", 1)
             s_i = int(s)
             e_i = int(e)
-            if s_i <= 0 or e_i < s_i:
+            if s_i < 0 or e_i < s_i:
                 raise ValueError
-            return s_i - 1, e_i - s_i + 1
+            return s_i, e_i - s_i + 1
         except ValueError:
             return 0, 1
 
     # 单个数字：n
     try:
         n = int(end)
-        if n <= 0:
-            raise ValueError
-        return n - 1, 1
+        return n, 1
     except ValueError:
         return 0, 1
 

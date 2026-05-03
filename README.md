@@ -3,9 +3,9 @@
 
 ![:name](https://count.getloli.com/@astrbot_plugin_qzone?name=astrbot_plugin_qzone&theme=minecraft&padding=6&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
-# astrbot_plugin_qzone
+# QQ空间增强版
 
-_✨ [astrbot](https://github.com/AstrBotDevs/AstrBot) QQ空间对接插件 ✨_  
+_✨ [astrbot](https://github.com/AstrBotDevs/AstrBot) QQ空间增强版对接插件 ✨_
 
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
@@ -16,31 +16,31 @@ _✨ [astrbot](https://github.com/AstrBotDevs/AstrBot) QQ空间对接插件 ✨_
 
 ## 🤝 介绍
 
-QQ空间对接插件, 可自动发说说、表白墙投稿审核、查看说说、点赞、评论等
+QQ空间增强版对接插件, 可自动发说说、表白墙投稿审核、查看说说、点赞、评论等
 
 ## 📦 安装
 
-- 直接在astrbot的插件市场搜索astrbot_plugin_qzone，点击安装，等待完成即可
+- 直接在 AstrBot 的插件市场搜索 QQ空间增强版，点击安装，等待完成即可
 
 - 也可以克隆源码到插件文件夹：
 
 ```bash
 # 克隆仓库到插件目录
 cd /AstrBot/data/plugins
-git clone https://github.com/Zhalslar/astrbot_plugin_qzone
+git clone https://github.com/taolicx/astrbot-plugin-qzone
 
 # 控制台重启AstrBot
 ```
 
 ## ⌨️ 配置
 
-请前往插件配置面板进行配置
+请前往插件配置面板进行配置。`pillowmd_style_dir` 留空时会自动使用插件内置默认样式。
 
 ### 定时调度说明
 
 - `publish_cron` / `comment_cron` 现在表示任务的**基准时间**（Cron 表达式：分 时 日 月 周）。
-- `publish_offset_minutes` / `comment_offset_minutes` 表示围绕基准时间的随机前后浮动范围（单位分钟，`±N`）。
-- 例如：`publish_cron = 30 23 * * *` 且 `publish_offset_minutes = 30`，表示每天会在 `23:00 ~ 24:00` 间随机执行一次自动发说说。
+- `publish_offset` / `comment_offset` 表示围绕基准时间的随机前后浮动范围（单位秒，`±N`）。
+- 例如：`publish_cron = 30 23 * * *` 且 `publish_offset = 1800`，表示每天会在 `23:00 ~ 24:00` 间随机执行一次自动发说说。
 - 将偏移设为 `0` 可关闭浮动，严格按 Cron 时间触发。
 
 ## 🐔 使用说明（QzonePlugin）

@@ -161,7 +161,12 @@ class QzonePlugin(Star):
     @filter.command("评说说", alias={"评论说说", "读说说"})
     async def comment_feed(self, event: AiocqhttpMessageEvent):
         """评说说 <序号/范围>"""
-        posts = await self._get_posts(event, no_commented=True, no_self=True)
+        posts = await self._get_posts(
+            event,
+            with_detail=True,
+            no_commented=True,
+            no_self=True,
+        )
         for post in posts:
             try:
                 await self.service.comment_posts(post)
@@ -233,8 +238,8 @@ class QzonePlugin(Star):
         posts = await self._get_posts(event, target_id=event.get_self_id())
         for post in posts:
             try:
-                await self.sender.send_post(event, post, message="已删除说说")
                 await self.service.delete_post(post)
+                await self.sender.send_post(event, post, message="已删除说说")
             except Exception as e:
                 await event.send(event.plain_result(str(e)))
                 logger.error(e)

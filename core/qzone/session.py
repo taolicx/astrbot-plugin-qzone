@@ -58,15 +58,21 @@ class QzoneSession:
 
             self.cfg.update_cookies(cookies_str)
 
-        c = {k: v.value for k, v in SimpleCookie(cookies_str).items()}
-        uin = int(c.get("uin", "0")[1:])
-        if not uin:
+        cookies = {k: v.value for k, v in SimpleCookie(cookies_str).items()}
+        uin_raw = cookies.get("uin", "").lstrip("o")
+        if not uin_raw.isdigit():
             raise RuntimeError("Cookie 中缺少合法 uin")
+        uin = int(uin_raw)
+
+        skey = cookies.get("skey", "")
+        p_skey = cookies.get("p_skey", "")
+        if not skey or not p_skey:
+            raise RuntimeError("Cookie 中缺少 skey 或 p_skey")
 
         self._ctx = QzoneContext(
             uin=uin,
-            skey=c.get("skey", ""),
-            p_skey=c.get("p_skey", ""),
+            skey=skey,
+            p_skey=p_skey,
         )
 
         logger.info(f"登录成功，uin={uin}")

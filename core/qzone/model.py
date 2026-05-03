@@ -32,7 +32,6 @@ class QzoneContext:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
             "referer": f"https://user.qzone.qq.com/{self.uin}",
             "origin": "https://user.qzone.qq.com",
-            "Host": "user.qzone.qq.com",
             "Connection": "keep-alive",
         }
 
@@ -61,7 +60,11 @@ class ApiResponse:
         success_code: int = QZONE_CODE_OK,
     ) -> "ApiResponse":
         # 解析 code
-        code = raw.get(code_key, QZONE_CODE_UNKNOWN)
+        raw_code = raw.get(code_key, QZONE_CODE_UNKNOWN)
+        try:
+            code = int(raw_code)
+        except (TypeError, ValueError):
+            code = QZONE_CODE_UNKNOWN
 
         # 解析 message
         message = None
@@ -89,11 +92,13 @@ class ApiResponse:
             )
 
         # 失败
+        data = dict(raw)
+        data.pop(QZONE_INTERNAL_META_KEY, None)
         return cls(
             ok=False,
             code=code,
             message=message,
-            data={},
+            data=data,
             raw=raw,
         )
 

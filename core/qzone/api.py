@@ -19,7 +19,7 @@ class QzoneAPI(QzoneHttpClient):
     BASE_URL = "https://user.qzone.qq.com"
     UPLOAD_IMAGE_URL = "https://up.qzone.qq.com/cgi-bin/upload/cgi_upload_image"
     EMOTION_URL = "https://user.qzone.qq.com/proxy/domain/taotao.qzone.qq.com/cgi-bin/emotion_cgi_publish_v6"
-    DOLIKE_URL = "https://user.qzone.qq.com/proxy/domain/w.qzone.qq.com/cgi-bin/likes/internal_dolike_app"
+    DOLIKE_URL = "https://h5.qzone.qq.com/proxy/domain/w.qzone.qq.com/cgi-bin/likes/internal_dolike_app"
     LIST_URL = "https://user.qzone.qq.com/proxy/domain/taotao.qq.com/cgi-bin/emotion_cgi_msglist_v6"
     COMMENT_URL = "https://user.qzone.qq.com/proxy/domain/taotao.qzone.qq.com/cgi-bin/emotion_cgi_re_feeds"
     ZONE_LIST_URL = "https://user.qzone.qq.com/proxy/domain/ic2.qzone.qq.com/cgi-bin/feeds/feeds3_html_more"
@@ -130,12 +130,12 @@ class QzoneAPI(QzoneHttpClient):
             data={
                 "qzreferrer": f"{self.BASE_URL}/{ctx.uin}",  # 来源
                 "opuin": ctx.uin,  # 操作者QQ
-                "unikey": f"{self.BASE_URL}/{post.uin}/mood/{post.tid}",  # 动态唯一标识
-                "curkey": f"{self.BASE_URL}/{post.uin}/mood/{post.tid}",  # 要操作的动态对象
+                "unikey": f"http://user.qzone.qq.com/{post.uin}/mood/{post.tid}",  # 动态唯一标识
+                "curkey": f"http://user.qzone.qq.com/{post.uin}/mood/{post.tid}",  # 要操作的动态对象
                 "appid": 311,  # 应用ID(说说:311)
                 "from": 1,  # 来源
                 "typeid": 0,  # 类型ID
-                "abstime": int(time.time()),  # 当前时间戳
+                "abstime": post.create_time or int(time.time()),  # 说说发布时间
                 "fid": post.tid,  # 动态ID
                 "active": 0,  # 活动ID
                 "format": "json",  # 返回格式
@@ -162,10 +162,15 @@ class QzoneAPI(QzoneHttpClient):
                 "outCharset": "utf-8",  # 字符集
                 "plat": "qzone",  # 平台
                 "source": "ic",  # 来源
-                "platformid": 52,  # 平台id
+                "platformid": 50,  # 平台id
                 "format": "fs",  # 返回格式
                 "ref": "feeds",  # 引用
                 "content": content,  # 评论内容
+                "richval": "",
+                "richtype": "",
+                "private": "0",
+                "paramstr": "1",
+                "qzreferrer": f"{self.BASE_URL}/{ctx.uin}",
             },
         )
         return ApiResponse.from_raw(raw)
@@ -193,7 +198,7 @@ class QzoneAPI(QzoneHttpClient):
                 "outCharset": "utf-8",
                 "plat": "qzone",
                 "source": "ic",
-                "platformid": 52,
+                "platformid": 50,
                 "format": "fs",
                 "ref": "feeds",
                 "content": content,

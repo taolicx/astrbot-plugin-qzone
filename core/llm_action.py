@@ -27,9 +27,10 @@ class LLMAction:
                 seg["data"]["text"] for seg in msg["message"] if seg["type"] == "text"
             ]
 
-            text = f"{msg['sender']['nickname']}: {''.join(text_segments).strip()}"
+            content = "".join(text_segments).strip()
             # 仅当真正说了话才保留
-            if text:
+            if content:
+                text = f"{msg['sender']['nickname']}: {content}"
                 contexts.append({"role": "user", "content": text})
         return contexts
 
@@ -61,11 +62,14 @@ class LLMAction:
     def extract_content(raw: str) -> str:
         start_marker = '"""'
         end_marker = '"""'
-        start = raw.find(start_marker) + len(start_marker)
+        start_index = raw.find(start_marker)
+        if start_index == -1:
+            return raw.strip()
+        start = start_index + len(start_marker)
         end = raw.find(end_marker, start)
-        if start != -1 and end != -1:
+        if end != -1:
             return raw[start:end].strip()
-        return ""
+        return raw[start:].strip()
 
     async def generate_post(
         self, group_id: str = "", topic: str | None = None

@@ -1,2 +1,6 @@
 pillowmd
 json5
+aiohttp
+aiosqlite
+apscheduler
+beautifulsoup4
