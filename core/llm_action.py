@@ -71,6 +71,11 @@ class LLMAction:
             return raw[start:end].strip()
         return raw[start:].strip()
 
+    @staticmethod
+    def _clean_short_output(raw: str) -> str:
+        text = re.sub(r"[\s\u3000]+", "", raw)
+        return text.strip("\"“”").rstrip("。.")
+
     async def generate_post(
         self, group_id: str = "", topic: str | None = None
     ) -> str | None:
@@ -138,7 +143,12 @@ class LLMAction:
             if post.rt_con:  # 转发文本
                 content += f"\n[转发]\n{post.rt_con}"
 
-            prompt = f"\n[帖子内容]：\n{content}"
+            prompt = (
+                f"\n[说说作者QQ]：{post.uin}"
+                f"\n[说说作者昵称]：{post.name or '未知'}"
+                f"\n[图片数量]：{len(post.images)}"
+                f"\n[帖子内容]：\n{content}"
+            )
 
             logger.debug(prompt)
             llm_response = await provider.text_chat(
@@ -146,16 +156,14 @@ class LLMAction:
                 prompt=prompt,
                 image_urls=post.images,
             )
-            comment = re.sub(r"[\s\u3000]+", "", llm_response.completion_text).rstrip(
-                "。"
-            )
+            comment = self._clean_short_output(llm_response.completion_text)
             logger.info(f"LLM 生成的评论：{comment}")
             return comment
 
         except Exception as e:
             raise ValueError(f"LLM 调用失败：{e}")
 
-    async def generate_reply(self,post: Post, comment: Comment) -> str | None:
+    async def generate_reply(self, post: Post, comment: Comment) -> str | None:
         """根据评论内容生成回复"""
         provider = (
             self.context.get_provider_by_id(self.cfg.llm.reply_provider_id)
@@ -169,15 +177,21 @@ class LLMAction:
             if post.rt_con:  # 转发文本
                 content += f"\n[转发]\n{post.rt_con}"
 
-            prompt = f"\n## 帖子内容\n{content}"
-            prompt += f"\n## 要回复的评论\n{comment.nickname}：{comment.content}"
+            prompt = (
+                f"\n## 说说作者\nQQ：{post.uin}\n昵称：{post.name or '未知'}"
+                f"\n## 帖子内容\n{content}"
+                f"\n## 要回复的评论"
+                f"\n评论者QQ：{comment.uin}"
+                f"\n评论者昵称：{comment.nickname or '未知'}"
+                f"\n评论内容：{comment.content}"
+            )
             logger.debug(prompt)
             llm_response = await provider.text_chat(
-                system_prompt=self.cfg.llm.reply_prompt, prompt=prompt
+                system_prompt=self.cfg.llm.reply_prompt,
+                prompt=prompt,
+                image_urls=post.images,
             )
-            reply = re.sub(r"[\s\u3000]+", "", llm_response.completion_text).rstrip(
-                "。"
-            )
+            reply = self._clean_short_output(llm_response.completion_text)
             logger.info(f"LLM 生成的回复：{reply}")
             return reply
 
