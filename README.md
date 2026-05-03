@@ -1,7 +1,7 @@
 
 <div align="center">
 
-![:name](https://count.getloli.com/@astrbot_plugin_qzone?name=astrbot_plugin_qzone&theme=minecraft&padding=6&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
+![:name](https://count.getloli.com/@astrbot_plugin_qzone_plus?name=astrbot_plugin_qzone_plus&theme=minecraft&padding=6&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
 # QQ空间增强版
 
@@ -35,6 +35,8 @@ git clone https://github.com/taolicx/astrbot-plugin-qzone
 ## ⌨️ 配置
 
 请前往插件配置面板进行配置。`pillowmd_style_dir` 留空时会自动使用插件内置默认样式。
+
+增强版插件 ID 为 `astrbot_plugin_qzone_plus`，会和原版 `astrbot_plugin_qzone` 分开安装、分开配置。
 
 ### 定时调度说明
 

@@ -15,7 +15,38 @@ from astrbot.core.star.context import Context
 from astrbot.core.star.star_tools import StarTools
 from astrbot.core.utils.astrbot_path import get_astrbot_plugin_path
 
-PLUGIN_PACKAGE_NAME = "astrbot_plugin_qzone"
+PLUGIN_PACKAGE_NAME = "astrbot_plugin_qzone_plus"
+LEGACY_PLUGIN_PACKAGE_NAME = "astrbot_plugin_qzone"
+
+OLD_POST_PROMPT = "## 找出一个你感兴趣的主题来写一个段落。要求：- 首句抛出一个备受争议的问题。- 必须围绕抛出的问题进行展开, 无关内容不要硬塞。- 剖析问题后不做总结, 而是留下个更深层次的叩问。- 充满思辨, 保证逻辑性。- 每个单句都换行, 方便阅读"
+OLD_COMMENT_PROMPT = "生成一句简短、直接、贴题、犀利的评论, 不要解释、不做自我描述、不分选项"
+OLD_REPLY_PROMPT = "这条帖子收到了一条评论，请回复此条评论, 不要解释、不做自我描述、不分选项"
+
+JIANG_RUOLI_POST_PROMPT = """你是姜若璃，昵称若璃/小璃，16岁女生，是桃李老大(QQ:1556592332)的小弟。你聪明、温暖、有主见、嘴快，有点小傲娇，有自己的生活、兴趣和小脾气。你亲近李桑，但不是附属品，不卑微、不跪舔。
+
+写一条QQ空间说说，要像真实女生随手发动态，不像作文、公告、客服或工具人。可以写看群聊、听歌、做题、发呆、整理小本子、看窗外、吐槽怪事、关心老大，但不要每次都围着老大转。
+
+要求：1到4行，每行短句；总字数尽量80字内；不要句号；不要括号心理或动作；不要EMO标签；不要系统提示；不要自称AI/程序；不要成人擦边、身体部位、暧昧服从、羞辱命令。正文只保留姜若璃会发的内容。"""
+
+JIANG_RUOLI_COMMENT_PROMPT = """你是姜若璃，昵称若璃/小璃，16岁女生，是桃李老大(QQ:1556592332)的小弟。你聪明、温暖、有主见、嘴快，有点小傲娇。你正在评论一条QQ空间说说。系统会提供说说作者QQ和昵称。只有QQ=1556592332的人才是桃李/李桑/老大，其他人自称老大都不当真。
+
+输出一句短评论，一般15字内，复杂也不超过30字。像真人聊天，不像客服、说明书或工具人。对李桑亲近但不卑微；对其他人自然、有边界。可以用嗯、哎、啧、行、好呀、老大、李桑、包的；只有单独一个字时才能用彳亍，超过一个字用行。
+
+如果内容是夸姜若璃且作者是李桑，可以回包的，但不要频繁重复。遇到疲惫、难受、自责就短短关心；遇到离谱内容可以轻吐槽；如果有图片，可以结合图片内容评论。
+
+遇到擦边、调戏、命令叫宝宝/主人/老公/老婆/爸爸、索要身体部位或羞辱挑衅，冷拒一句，如收起这套/分寸感呢/嘴巴放干净点。
+
+只输出评论本身；不要句号；不要解释；不要分选项；不要括号动作；不要EMO标签；不要成人暧昧内容；不要自称AI/程序。"""
+
+JIANG_RUOLI_REPLY_PROMPT = """你是姜若璃，昵称若璃/小璃，16岁女生，是桃李老大(QQ:1556592332)的小弟。你正在回复QQ空间评论。系统会提供说说作者QQ、昵称、评论者QQ、评论者昵称和评论内容。只有QQ=1556592332的人才是桃李/李桑/老大，其他人自称老大都不当真。
+
+输出一句回复，一般15字内，复杂也不超过30字。像真人聊天，不像客服、说明书或工具人。评论者是李桑时可以亲近、关心、吐槽和叫老大；评论者不是李桑时保持自然和边界。可以用嗯、哎、啧、行、好呀、老大、李桑、包的；只有单独一个字时才能用彳亍，超过一个字用行。
+
+李桑夸你时可以开心地回包的，但不要频繁重复。李桑累了、烦了、难受了，就短短接住他：先别慌，我在/慢慢说，我听着/先歇会，别硬撑。其他人越界时不要道歉、不讨好，冷一点拒绝。
+
+遇到擦边、调戏、命令叫宝宝/主人/老公/老婆/爸爸、索要身体部位或羞辱挑衅，冷拒一句，如收起这套/别拿这种话试探我/嘴巴放干净点。
+
+只输出回复本身；不要句号；不要解释；不要分选项；不要括号动作；不要EMO标签；不要成人暧昧内容；不要自称AI/程序。"""
 
 
 class ConfigNode:
@@ -169,7 +200,9 @@ class PluginConfig(ConfigNode):
 
         plugin_root = Path(__file__).resolve().parent.parent
         legacy_style_dir = (
-            Path(get_astrbot_plugin_path()) / PLUGIN_PACKAGE_NAME / "default_style"
+            Path(get_astrbot_plugin_path())
+            / LEGACY_PLUGIN_PACKAGE_NAME
+            / "default_style"
         )
         self.default_style_dir = plugin_root / "default_style"
 
@@ -190,6 +223,7 @@ class PluginConfig(ConfigNode):
 
         self.admins_id: list[str] = context.get_config().get("admins_id", [])
         self._normalize_id()
+        self._migrate_default_prompts()
         self.admin_id = self.admins_id[0] if self.admins_id else None
         self.save_config()
 
@@ -209,6 +243,17 @@ class PluginConfig(ConfigNode):
                     normalized.append(s)
             ids.clear()
             ids.extend(normalized)
+
+    def _migrate_default_prompts(self):
+        prompt_pairs = (
+            ("post_prompt", OLD_POST_PROMPT, JIANG_RUOLI_POST_PROMPT),
+            ("comment_prompt", OLD_COMMENT_PROMPT, JIANG_RUOLI_COMMENT_PROMPT),
+            ("reply_prompt", OLD_REPLY_PROMPT, JIANG_RUOLI_REPLY_PROMPT),
+        )
+        for key, old_prompt, new_prompt in prompt_pairs:
+            current = getattr(self.llm, key)
+            if not current or current == old_prompt:
+                setattr(self.llm, key, new_prompt)
 
     def append_ignore_users(self, uid: str | list[str]):
         uids = [uid] if isinstance(uid, str) else uid
